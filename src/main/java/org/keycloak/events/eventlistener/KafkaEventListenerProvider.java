@@ -6,8 +6,6 @@ import org.keycloak.events.EventListenerTransaction;
 import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.models.KeycloakSession;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -44,18 +42,6 @@ public class KafkaEventListenerProvider implements EventListenerProvider {
 
     }
 
-    private void kafkaSend(Properties properties, String topicName, JsonNode data){
-        
-        String bootstrapServer = properties.getProperty(org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
-        logger.debug("Attempt to send to Kafka: server=" + bootstrapServer + ", topicName=" + topicName);
-
-        Thread.currentThread().setContextClassLoader(null);
-        KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
-        producer.send(new ProducerRecord<String, String>(topicName, data.toString()));
-
-        producer.close();
-    }
-
     private void logEvent(Event event) {
         KafkaEventListenerConfig kafkaConfig = new KafkaEventListenerConfig();
         Properties properties = kafkaConfig.getProperties();
@@ -64,7 +50,9 @@ public class KafkaEventListenerProvider implements EventListenerProvider {
         ObjectMapper eventMapper = new ObjectMapper();
         JsonNode eventJson = eventMapper.convertValue(event, JsonNode.class);
 
-        kafkaSend(properties, topicName, eventJson);
+        logger.debug("Starting KafkaEventSender to asynchronously send Event...");
+        Thread sender = new Thread(new KafkaEventSender(properties, topicName, eventJson));
+        sender.start();
     }
 
     private void logAdminEvent(AdminEvent adminEvent, boolean includeRepresentation) {
@@ -75,6 +63,8 @@ public class KafkaEventListenerProvider implements EventListenerProvider {
         ObjectMapper eventMapper = new ObjectMapper();
         JsonNode eventJson = eventMapper.convertValue(adminEvent, JsonNode.class);
 
-        kafkaSend(properties, topicName, eventJson);
+        logger.debug("Starting KafkaEventSender to asynchronously send Event...");
+        Thread sender = new Thread(new KafkaEventSender(properties, topicName, eventJson));
+        sender.start();
     }
 }
