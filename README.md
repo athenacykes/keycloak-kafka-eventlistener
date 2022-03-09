@@ -2,6 +2,8 @@
 
 Output Keycloak Events and Admin Events to a Kafka topic.
 
+Based on Keycloak 15.0.2+ / RH-SSO 7.5.0+
+
 # How to use the plugin
 
 1. Build the plugin
